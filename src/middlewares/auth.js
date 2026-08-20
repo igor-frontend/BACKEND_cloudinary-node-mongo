@@ -1,20 +1,25 @@
 const jwt = require("jsonwebtoken");
-const User = require("../models/User"); 
+const User = require("../models/User");
+
 const isAuth = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return res.status(401).json({ message: "No autenticado. Falta el token/ID de usuario" });
+            return res.status(401).json({ message: "No autenticado. Falta el token en formato Bearer" });
         }
-        const userId = authHeader.split(" ")[1];
-        const user = await User.findById(userId);
+
+        const token = authHeader.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "clave_secreta_por_defecto");
+
+        const user = await User.findById(decoded.id).select("-password");
         if (!user) {
-            return res.status(401).json({ message: "Usuario no encontrado. Autorización denegada" });
+            return res.status(401).json({ message: "Usuario no encontrado" });
         }
+
         req.user = user;
         next();
     } catch (error) {
-        res.status(500).json({ message: "Error en la autenticación", error: error.message });
+        return res.status(401).json({ message: "Token inválido o expirado", error: error.message });
     }
 };
 

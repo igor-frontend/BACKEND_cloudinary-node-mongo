@@ -1,7 +1,8 @@
 const express = require("express");
-const { upload } = require("../middlewares/upload.js"); 
+const { upload } = require("../middlewares/upload.js");
 const { isAuth, isAdmin } = require("../middlewares/auth");
 const {
+    loginUser,
     createUser,
     getUsers,
     getUserById,
@@ -12,7 +13,8 @@ const {
 
 const router = express.Router();
 
-router.post("/", upload.single("image"), createUser);
+router.post("/register", upload.single("image"), createUser);
+router.post("/login", loginUser);
 router.get("/", getUsers);
 router.get("/:id", getUserById);
 router.put("/:id", isAuth, upload.single("image"), updateUser);

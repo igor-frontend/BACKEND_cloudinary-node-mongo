@@ -1,11 +1,6 @@
-const cloudinary = require("cloudinary").v2;
+const cloudinary = require("../config/cloudinary");
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const multer = require("multer");
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_NAME,
-    api_key: process.env.CLOUDINARY_KEY,
-    api_secret: process.env.CLOUDINARY_SECRET
-});
 
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
@@ -16,6 +11,7 @@ const storage = new CloudinaryStorage({
 });
 
 const upload = multer({ storage: storage });
+
 const deleteCloudinaryFile = async (url) => {
     if (!url) return;
     try {
