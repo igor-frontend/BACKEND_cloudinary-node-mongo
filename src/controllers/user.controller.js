@@ -2,6 +2,7 @@ const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { deleteCloudinaryFile } = require("../middlewares/upload.js");
+const Post = require("../models/Post");
 
 const loginUser = async (req, res) => {
     try {
@@ -113,25 +114,12 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const currentUser = req.user;
-
-        if (currentUser.role !== "admin" && currentUser._id.toString() !== id) {
-            return res.status(403).json({ message: "No tienes permisos para eliminar esta cuenta" });
-        }
-
-        const userToDelete = await User.findById(id);
-        if (!userToDelete) {
-            return res.status(404).json({ message: "Usuario no encontrado" });
-        }
-
-        if (userToDelete.image) {
-            await deleteCloudinaryFile(userToDelete.image);
-        }
-
-        await User.findByIdAndDelete(id);
-        res.status(200).json({ message: "Usuario e imagen eliminados correctamente" });
+        const userDeleted = await User.findByIdAndDelete(id);
+        if (!userDeleted) return res.status(404).json({ message: "Usuario no encontrado" });
+        await Post.deleteMany({ user: id }); 
+        res.status(200).json({ message: "Usuario y todos sus posts eliminados en cascada con éxito" });
     } catch (error) {
-        res.status(500).json({ message: "Error eliminando el usuario", error: error.message });
+        res.status(500).json({ message: "Error en el borrado", error: error.message });
     }
 };
 

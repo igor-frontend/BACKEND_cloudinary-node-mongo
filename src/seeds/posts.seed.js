@@ -1,3 +1,7 @@
+if (!globalThis.crypto) {
+    globalThis.crypto = require("node:crypto").webcrypto;
+}
+
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const Post = require("../models/Post");

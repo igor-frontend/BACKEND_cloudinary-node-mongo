@@ -44,37 +44,41 @@ const getPostById = async (req, res) => {
 const updatePost = async (req, res) => {
     try {
         const { id } = req.params;
-        const oldPost = await Post.findById(id);
-        if (!oldPost) return res.status(404).json({ message: "Publicación no encontrada" });
+        const { title, content } = req.body;
 
-        if (req.body.user && req.body.user !== oldPost.user.toString()) {
-            const newAuthorExists = await User.findById(req.body.user);
-            if (!newAuthorExists) return res.status(404).json({ message: "El nuevo autor no existe" });
-
-            await User.findByIdAndUpdate(oldPost.user, { $pull: { posts: oldPost._id } });
-            await User.findByIdAndUpdate(req.body.user, { $addToSet: { posts: oldPost._id } });
+        const post = await Post.findById(id);
+        if (!post) return res.status(404).json({ message: "Post no encontrado" });
+        if (post.user.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+            return res.status(403).json({ message: "Acceso denegado. No eres el creador de este post ni administrador" });
         }
+        if (title) post.title = title;
+        if (content) post.content = content;
+        await post.save();
 
-        const updatedPost = await Post.findByIdAndUpdate(id, req.body, { new: true });
-        res.status(200).json(updatedPost);
+        res.status(200).json({ message: "Post actualizado con éxito", post });
     } catch (error) {
-        res.status(500).json({ message: "Error actualizando la publicación", error: error.message });
+        res.status(500).json({ message: "Error al actualizar el post", error: error.message });
     }
 };
 
 const deletePost = async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id);
-        if (!post) return res.status(404).json({ message: "Publicación no encontrada" });
+        const { id } = req.params;
+
+        const post = await Post.findById(id);
+        if (!post) return res.status(404).json({ message: "Post no encontrado" });
+        if (post.user.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+            return res.status(403).json({ message: "Acceso denegado. No tienes permisos para borrar este post" });
+        }
+
+        await Post.findByIdAndDelete(id);
 
         await User.findByIdAndUpdate(post.user, {
-            $pull: { posts: post._id }
+            $pull: { posts: id }
         });
-
-        await Post.findByIdAndDelete(req.params.id);
-        res.status(200).json({ message: "Publicación eliminada correctamente" });
+        res.status(200).json({ message: "Post eliminado correctamente de la base de datos" });
     } catch (error) {
-        res.status(500).json({ message: "Error  publicación", error: error.message });
+        res.status(500).json({ message: "Error al eliminar el post", error: error.message });
     }
 };
 
