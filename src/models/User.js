@@ -36,9 +36,9 @@ userSchema.pre("save", async function () {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
     } catch (error) {
+        error.message = `[Error de Seguridad del Modelo]: Falló la encriptación de credenciales. Detalle: ${error.message}`;
         throw error;
     }
 });
-
 
 module.exports = mongoose.model("User", userSchema);

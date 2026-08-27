@@ -1,4 +1,5 @@
 const express = require("express");
+const { isAuth } = require("../middlewares/auth");
 const {
     createPost,
     getPosts,
@@ -8,10 +9,13 @@ const {
 } = require("../controllers/post.controller.js");
 
 const router = express.Router();
-router.post("/", createPost);
+
 router.get("/", getPosts);
 router.get("/:id", getPostById);
-router.put("/:id", updatePost);
-router.delete("/:id", deletePost);
+
+// VERIFICACIÓN ESTRICTA: Re-inyección de seguridad obligatoria por tokens en endpoints de escritura
+router.post("/", isAuth, createPost);
+router.put("/:id", isAuth, updatePost);
+router.delete("/:id", isAuth, deletePost);
 
 module.exports = router;

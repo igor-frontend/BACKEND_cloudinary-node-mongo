@@ -88,24 +88,36 @@ const updateUser = async (req, res) => {
             return res.status(403).json({ message: "No tienes permisos para modificar este perfil" });
         }
         
+        const userToUpdate = await User.findById(id);
+        if (!userToUpdate) return res.status(404).json({ message: "Usuario no encontrado" });
+
         delete req.body.role;
         delete req.body.posts;
 
-        if (req.body.password) {
-            const salt = await bcrypt.genSalt(10);
-            req.body.password = await bcrypt.hash(req.body.password, salt);
+        // CORRECCIÓN REHASHEO: Solo se modifica la propiedad si el usuario envía una nueva contraseña real
+        if (req.body.password && req.body.password.trim() !== "") {
+            userToUpdate.password = req.body.password;
         }
 
         if (req.file) {
-            const oldUser = await User.findById(id);
-            if (oldUser && oldUser.image) {
-                await deleteCloudinaryFile(oldUser.image);
+            if (userToUpdate.image) {
+                await deleteCloudinaryFile(userToUpdate.image);
             }
-            req.body.image = req.file.path;
+            userToUpdate.image = req.file.path;
         }
+        Object.keys(req.body).forEach((key) => {
+            if (key !== "password") {
+                userToUpdate[key] = req.body[key];
+            }
+        });
 
-        const updatedUser = await User.findByIdAndUpdate(id, req.body, { new: true }).select("-password");
-        res.status(200).json(updatedUser);
+        // Ejecuta el hook nativo pre("save") del modelo de forma segura
+        await userToUpdate.save();
+
+        const responseUser = userToUpdate.toObject();
+        delete responseUser.password;
+
+        res.status(200).json(responseUser);
     } catch (error) {
         res.status(500).json({ message: "Error actualizando el usuario", error: error.message });
     }
@@ -114,9 +126,24 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const userDeleted = await User.findByIdAndDelete(id);
-        if (!userDeleted) return res.status(404).json({ message: "Usuario no encontrado" });
+        const currentUser = req.user;
+
+        // CORRECCIÓN VALIDACIÓN: Evita que cualquier usuario logueado borre a otro
+        if (currentUser.role !== "admin" && currentUser._id.toString() !== id) {
+            return res.status(403).json({ message: "No tienes permisos para eliminar este perfil" });
+        }
+
+        const userToDelete = await User.findById(id);
+        if (!userToDelete) return res.status(404).json({ message: "Usuario no encontrado" });
+
+        // CORRECCIÓN IMAGEN HUÉRFANA: Se purga el archivo de Cloudinary antes de borrar el documento de la BBDD
+        if (userToDelete.image) {
+            await deleteCloudinaryFile(userToDelete.image);
+        }
+
+        await User.findByIdAndDelete(id);
         await Post.deleteMany({ user: id }); 
+        
         res.status(200).json({ message: "Usuario y todos sus posts eliminados en cascada con éxito" });
     } catch (error) {
         res.status(500).json({ message: "Error en el borrado", error: error.message });
@@ -132,4 +159,3 @@ module.exports = {
     updateUser,
     deleteUser
 };
-

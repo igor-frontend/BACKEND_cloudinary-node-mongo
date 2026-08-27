@@ -3,16 +3,14 @@ const User = require("../models/User");
 
 const createPost = async (req, res) => {
     try {
-        const { title, content, user } = req.body;
+        const { title, content } = req.body;
+        
+        // CORRECCIÓN REQ.USER: Se extrae estrictamente del token verificado por seguridad, ignorando el body
+        const userId = req.user._id;
 
-        const associatedUser = await User.findById(user);
-        if (!associatedUser) {
-            return res.status(404).json({ message: "El usuario asociado al post no existe" });
-        }
+        const newPost = await Post.create({ title, content, user: userId });
 
-        const newPost = await Post.create({ title, content, user });
-
-        await User.findByIdAndUpdate(user, {
+        await User.findByIdAndUpdate(userId, {
             $addToSet: { posts: newPost._id }
         });
 
